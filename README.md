@@ -18,7 +18,7 @@ A Python-based static HTML Gantt chart generator that creates self-contained, em
 
 You can use either pip (traditional) or uv (modern, fast package manager):
 
-#### Option 1: Using uv (Recommended)
+#### Using uv (Recommended)
 
 ```bash
 # Install uv (if you don't have it)
@@ -34,16 +34,6 @@ uv sync
 git clone https://github.com/yourusername/gantt-static-html.git
 cd gantt-static-html
 uv sync
-```
-
-#### Option 2: Using pip
-
-```bash
-# Install dependencies directly
-pip install -r requirements.txt
-
-# Or using pip with pyproject.toml
-pip install .
 ```
 
 > 💡 Tip: uv is 10-100x faster than pip and handles lock files automatically. See Installation Guide for more details.
@@ -70,7 +60,6 @@ gantt-static-html/
 ├── main.py                     # Entry point
 ├── pyproject.toml             # Project metadata (uv/pip compatible)
 ├── uv.lock                    # Locked dependencies (uv only)
-├── requirements.txt           # Legacy pip requirements
 ├── README.md                  # This file
 ├── LICENSE                    # MIT license
 ├── .gitignore               # Git ignore patterns
@@ -194,18 +183,10 @@ Common issues and solutions:
 
 Setting Up Development Environment
 
-### Using uv (recommended)
+### Using uv
 
 ```bash
 uv venv
 source .venv/bin/activate
 uv sync
-```
-
-### Using pip
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
 ```
