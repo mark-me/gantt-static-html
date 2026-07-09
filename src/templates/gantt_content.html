@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extra_styles %}
+<style>
+#gantt {
+    width: 100% !important;
+    height: 700px !important;
+    min-height: 700px;
+}
+.task-hidden { display: none !important; }
+.epic-task { font-weight: bold; background-color: #f0f0f0; }
+</style>
+{% endblock %}
+
+{% block external_styles %}
+<link href="{{ cdn_styles }}" rel="stylesheet">
+{% endblock %}
+
+{% block controls %}
+<div class="control-group">
+    <span class="control-label">Hierarchy:</span>
+    <button class="btn" onclick="expandAll()">⬆ Expand All</button>
+    <button class="btn" onclick="collapseAll()">⬇ Collapse All</button>
+</div>
+
+<div class="control-group">
+    <span class="control-label">Zoom:</span>
+    <button class="btn secondary" onclick="zoomIn()">🔍 In</button>
+    <button class="btn secondary" onclick="zoomOut()">🔍 Out</button>
+</div>
+
+<div class="control-group">
+    <span class="control-label">Status:</span>
+    <div class="status-filter" id="statusFilter">
+        <button class="status-btn completed active" data-status="completed" onclick="filterByStatus(this)">Completed</button>
+        <button class="status-btn in_progress active" data-status="in_progress" onclick="filterByStatus(this)">In Progress</button>
+        <button class="status-btn pending active" data-status="pending" onclick="filterByStatus(this)">Pending</button>
+    </div>
+    <button class="btn secondary" onclick="resetFilters()">↺ Reset</button>
+</div>
+
+<div class="control-group" style="margin-left: auto;">
+    <button class="btn secondary" onclick="window.print()">🖨️ Print</button>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="card legend">
+    <div class="legend-title">Epics</div>
+    <div class="legend-items" id="legendContainer"></div>
+</div>
+
+<div class="card chart-wrapper">
+    <div id="gantt"></div>
+    <div class="filter-info" id="filterInfo" style="display: none;"></div>
+</div>
+{% endblock %}
+
+{% block external_scripts %}
+<script src="{{ cdn_script }}"></script>
+{% endblock %}
+
+{% block extra_scripts %}
+<!-- TASK DATA (must come first) -->
+<script>
+var projectData = {{ tasks_json | safe }};
+console.log('Task data loaded:', projectData.length, 'tasks');
+</script>
+
+<!-- MOMENT.JS -->
+{% if embed_cdn and moment_inline %}
+<!-- Embedded Moment.js -->
+<script>
+{{ moment_inline | safe }}
+</script>
+{% else %}
+<!-- CDN fallback -->
+<script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+{% endif %}
+
+<!-- FRAPPE GANTT -->
+{% if embed_cdn and frappe_inline %}
+<!-- Embedded Frappe Gantt -->
+<script>
+{{ frappe_inline | safe }}
+</script>
+{% else %}
+<!-- CDN fallback -->
+<script src="{{ cdn_script }}"></script>
+{% endif %}
+
+<!-- VERIFICATION - Check if libraries loaded BEFORE initializing -->
+<script>
+(function() {
+    console.log('=== LIBRARY VERIFICATION ===');
+    console.log('Moment loaded:', typeof moment !== 'undefined');
+    console.log('Gantt loaded:', typeof Gantt === 'function');
+
+    if (typeof Gantt === 'undefined') {
+        console.error('Gantt class NOT created!');
+
+        // Debug: Check if script tag was parsed
+        var scripts = document.getElementsByTagName('script');
+        console.log('Total script tags:', scripts.length);
+
+        // Last resort: Try loading from CDN
+        console.log('Attempting CDN fallback...');
+        var s = document.createElement('script');
+        s.src = '{{ cdn_script }}';
+        s.onload = function() {
+            console.log('CDN fallback loaded');
+        };
+        document.head.appendChild(s);
+    }
+})();
+</script>
+
+<!-- BUNDLED CUSTOM JS -->
+{% if enable_bundling and bundled_js %}
+<script>
+{{ bundled_js | safe }}
+</script>
+{% endif %}
+
+<!-- GANTT INITIALIZATION -->
+<script>
+(function() {
+    console.log('=== INITIALIZATION PHASE ===');
+
+    function initGantt() {
+        // Double-check after delayed execution
+        console.log('Checking Gantt availability again...');
+        console.log('Gantt:', typeof Gantt);
+
+        if (typeof Gantt !== 'function') {
+            console.error('Gantt still not available after checks!');
+            console.log('Trying one more CDN attempt...');
+
+            var script = document.createElement('script');
+            script.src = '{{ cdn_script }}';
+            script.onload = function() {
+                console.log('CDN load triggered init');
+                initGantt();
+            };
+            document.body.appendChild(script);
+            return;
+        }
+
+        if (typeof projectData === 'undefined' || projectData.length === 0) {
+            console.error('projectData not found!');
+            return;
+        }
+
+        try {
+            console.log('Converting', projectData.length, 'tasks to Gantt format...');
+
+            var frappeTasks = projectData.map(function(task) {
+                return {
+                    id: task.id,
+                    name: task.text,
+                    start: task.start_date,
+                    end: task.end_date,
+                    progress: Math.round((task.progress || 0) * 100),
+                    dependencies: '',
+                    custom_class: task.is_epic ? 'epic-task' : 'feature-task'
+                };
+            });
+
+            console.log('Creating Gantt instance...');
+            window.ganttChart = new Gantt('#gantt', frappeTasks, {
+                view_mode: 'Day',
+                on_click: function(task) {
+                    console.log('Task clicked:', task);
+                }
+            });
+
+            console.log('✓ SUCCESS: Gantt initialized!');
+            console.log('ganttChart:', window.ganttChart);
+
+            // Keep the full converted task list around so filtering/collapsing
+            // can rebuild subsets of it and hand them to chart.refresh()
+            window.allFrappeTasks = frappeTasks;
+            window.collapsedEpics = window.collapsedEpics || new Set();
+
+            // Single shared re-render: recomputes which tasks should be visible
+            // based on active status filters + collapsed epics, then refreshes
+            // the chart with that subset. filters.js and expandAll/collapseAll
+            // both call this instead of touching the chart directly.
+            window.renderGanttView = function() {
+                if (!window.ganttChart || !window.allFrappeTasks) return;
+
+                var visibleIds = {};
+                projectData.forEach(function(task) {
+                    if (!task) return;
+                    if (task.is_epic) {
+                        visibleIds[task.id] = true;
+                    } else {
+                        var parentCollapsed = window.collapsedEpics.has(task.parent);
+                        var passesFilter = typeof shouldShowTask === 'function' ? shouldShowTask(task) : true;
+                        if (!parentCollapsed && passesFilter) {
+                            visibleIds[task.id] = true;
+                        }
+                    }
+                });
+
+                var visibleTasks = window.allFrappeTasks.filter(function(t) {
+                    return visibleIds[t.id];
+                });
+
+                if (visibleTasks.length === 0) {
+                    console.warn('renderGanttView: no tasks visible, skipping refresh to avoid an empty chart');
+                    return;
+                }
+
+                window.ganttChart.refresh(visibleTasks);
+            };
+
+            // Build legend
+            if (typeof buildLegend === 'function') {
+                buildLegend(projectData);
+            }
+
+            // Initialize managers
+            if (typeof ThemeManager !== 'undefined') {
+                ThemeManager.init();
+            }
+            if (typeof FilterManager !== 'undefined') {
+                FilterManager.init(window.ganttChart);
+            }
+
+        } catch (error) {
+            console.error('Initialization error:', error);
+            console.error(error.stack);
+            alert('Error: ' + error.message);
+        }
+    }
+
+    // Wait for DOM
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initGantt);
+    } else {
+        // DOM already ready
+        setTimeout(initGantt, 100);
+    }
+})();
+
+// GLOBAL FUNCTIONS
+window.collapsedEpics = window.collapsedEpics || new Set();
+
+window.expandAll = function() {
+    window.collapsedEpics.clear();
+    if (typeof window.renderGanttView === 'function') window.renderGanttView();
+    if (typeof updateFilterInfo === 'function') updateFilterInfo();
+};
+window.collapseAll = function() {
+    var epicIds = (window.projectData || []).filter(function(t) { return t && t.is_epic; }).map(function(t) { return t.id; });
+    window.collapsedEpics = new Set(epicIds);
+    if (typeof window.renderGanttView === 'function') window.renderGanttView();
+    if (typeof updateFilterInfo === 'function') updateFilterInfo();
+};
+window.zoomIn = function() {
+    if (window.ganttChart && window.ganttChart.change_view_mode) {
+        var views = ['Quarter', 'Month', 'Week', 'Day'];
+        var idx = views.indexOf(window.ganttChart.options.view_mode);
+        if (idx > 0) window.ganttChart.change_view_mode(views[idx - 1]);
+    }
+};
+window.zoomOut = function() {
+    if (window.ganttChart && window.ganttChart.change_view_mode) {
+        var views = ['Quarter', 'Month', 'Week', 'Day'];
+        var idx = views.indexOf(window.ganttChart.options.view_mode);
+        if (idx < views.length - 1) window.ganttChart.change_view_mode(views[idx + 1]);
+    }
+};
+// NOTE: filterByStatus/resetFilters are defined for real in filters.js
+// (bundled above) and already assigned to window there. Do not reassign
+// them here to stub console.log versions - that was the bug that made
+// the filter buttons appear to do nothing.
+
+// LEGEND BUILDER
+function buildLegend(tasks) {
+    var container = document.getElementById('legendContainer');
+    if (!container) return;
+    container.innerHTML = '';
+
+    tasks.filter(function(task) { return task && task.is_epic; }).forEach(function(epic) {
+        var badge = document.createElement('span');
+        badge.className = 'legend-badge';
+        badge.style.background = epic.color + '20';
+        var dot = document.createElement('span');
+        dot.className = 'legend-dot';
+        dot.style.background = epic.color;
+        badge.appendChild(dot);
+        badge.appendChild(document.createTextNode(epic.text.replace(/^▶\s*/, '')));
+        container.appendChild(badge);
+    });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,51 @@
+{
+    "project_title": "Q3-Q4 2026 Product Roadmap",
+    "epics": [
+        {
+            "id": "EPIC-1",
+            "name": "🚀 Mobile App Launch",
+            "description": "Cross-platform mobile application",
+            "features": [
+                {
+                    "id": "FEATURE-1",
+                    "name": "User Authentication",
+                    "start_date": "2026-07-01",
+                    "end_date": "2026-07-10",
+                    "progress": 100,
+                    "status": "completed"
+                },
+                {
+                    "id": "FEATURE-2",
+                    "name": "Push Notifications",
+                    "start_date": "2026-07-08",
+                    "end_date": "2026-07-20",
+                    "progress": 60,
+                    "status": "in_progress"
+                }
+            ]
+        },
+        {
+            "id": "EPIC-2",
+            "name": "📊 Analytics Dashboard",
+            "description": "Real-time analytics platform",
+            "features": [
+                {
+                    "id": "FEATURE-3",
+                    "name": "Data Pipeline",
+                    "start_date": "2026-07-10",
+                    "end_date": "2026-07-25",
+                    "progress": 80,
+                    "status": "in_progress"
+                },
+                {
+                    "id": "FEATURE-4",
+                    "name": "Visualization Components",
+                    "start_date": "2026-07-20",
+                    "end_date": "2026-08-10",
+                    "progress": 40,
+                    "status": "in_progress"
+                }
+            ]
+        }
+    ]
+}

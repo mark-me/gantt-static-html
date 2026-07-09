@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ title }}{% endblock %}</title>
+
+    <!-- External Styles (replaced during bundling) -->
+    {% block external_styles %}{% endblock %}
+
+    <!-- Bundled CSS will be inserted here -->
+    {% if enable_bundling %}
+    <style>
+        {{ bundled_css | safe }}
+    </style>
+    {% else %}
+    <link href="/assets/css/styles.css" rel="stylesheet">
+    {% endif %}
+
+    <style>
+        /* Inline fallback for theme toggle button styling */
+        .theme-toggle {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            cursor: pointer;
+            z-index: 1000;
+        }
+    </style>
+
+    {% block extra_styles %}{% endblock %}
+</head>
+<body>
+    <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
+        <span id="themeIcon">🌙</span>
+    </button>
+
+    <div class="header">
+        <h1>{% block header_title %}{{ title }}{% endblock %}</h1>
+        <p class="header-meta">
+            {% block header_meta %}Generated: {{ generated_at }}{% endblock %}
+        </p>
+    </div>
+
+    <div class="controls">
+        {% block controls %}{% endblock %}
+    </div>
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <div class="footer">
+        {% block footer %}
+        <p>Generated with Python + Jinja + Frappe Gantt</p>
+        {% endblock %}
+    </div>
+
+    <!-- External Scripts (replaced during bundling) -->
+    {% if enable_bundling %}
+    <script>
+        {{ bundled_js | safe }}
+    </script>
+    {% else %}
+    <script src="/assets/js/scripts.js"></script>
+    {% endif %}
+
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

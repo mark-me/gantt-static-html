@@ -1,0 +1,117 @@
+/* Button Components */
+.btn {
+    background: var(--btn-bg);
+    color: var(--btn-text);
+    border: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.btn:hover {
+    background: var(--btn-hover);
+    transform: translateY(-1px);
+}
+
+.btn:active { transform: translateY(0); }
+
+.btn.secondary {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+.btn.secondary:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--btn-bg);
+}
+
+.btn.active {
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+    opacity: 0.8;
+}
+
+/* Status Filter */
+.status-filter {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    padding: 0.5rem;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+}
+
+.status-btn {
+    background: var(--bg-tertiary);
+    border: 1px solid transparent;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.2s ease;
+    color: var(--text-secondary);
+}
+
+.status-btn:hover {
+    border-color: var(--btn-bg);
+    color: var(--text-primary);
+}
+
+.status-btn.completed { border-left: 3px solid #4CAF50; }
+.status-btn.in_progress { border-left: 3px solid #2196F3; }
+.status-btn.pending { border-left: 3px solid #FF9800; }
+
+.status-btn.active {
+    background: var(--btn-bg);
+    color: white;
+    border-color: var(--btn-bg);
+}
+
+/* Badges & Indicators */
+.legend-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.legend-dot { width: 12px; height: 12px; border-radius: 50%; }
+
+.status-badge {
+    display: inline-block;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.status-badge.completed { background: rgba(76, 175, 80, 0.2); color: #4CAF50; }
+.status-badge.in_progress { background: rgba(33, 150, 243, 0.2); color: #2196F3; }
+.status-badge.pending { background: rgba(255, 152, 0, 0.2); color: #FF9800; }
+
+.task-hidden { display: none !important; }
+
+.filter-info {
+    text-align: center;
+    padding: 1rem;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+/* Gantt Specific */
+#gantt {
+    width: 100%;
+    height: 700px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
+}
