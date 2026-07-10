@@ -114,7 +114,8 @@ def _flatten_tasks(epics: list) -> list:
             "open": True,
             "color": epic["color"],
             "is_epic": True,
-            "parent": None
+            "parent": None,
+            "url": epic.get("url")
         })
 
         for feature in epic.get("features", []):
@@ -129,7 +130,9 @@ def _flatten_tasks(epics: list) -> list:
                     "color": None,
                     "is_epic": False,
                     "parent": epic["id"],
-                    "status": feature.get("status", "pending")
+                    "status": feature.get("status", "pending"),
+                    "url": feature.get("url"),
+                    "epic_name": epic["name"]
                 })
 
     return tasks

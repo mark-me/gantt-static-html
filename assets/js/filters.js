@@ -42,6 +42,14 @@ function resetFilters() {
         btn.classList.add('active');
     });
 
+    // Full reset: also clear epic visibility filters and expand collapsed epics
+    if (typeof window.resetEpicFilters === 'function') {
+        window.resetEpicFilters();
+    }
+    if (window.collapsedEpics && typeof window.collapsedEpics.clear === 'function') {
+        window.collapsedEpics.clear();
+    }
+
     if (typeof window.renderGanttView === 'function') {
         window.renderGanttView();
     }
@@ -55,7 +63,7 @@ function updateFilterInfo() {
 
     var allTasks = window.projectData || [];
     var visibleCount = allTasks.filter(function(t) {
-        return t && !t.is_epic && shouldShowTask(t);
+        return t && !t.is_epic && window.isFeatureVisible(t);
     }).length;
 
     var totalCount = allTasks.filter(function(t) {
@@ -67,7 +75,7 @@ function updateFilterInfo() {
     if (visibleCount !== totalCount) {
         infoEl.style.display = 'block';
         var filteredCount = totalCount - visibleCount;
-        infoEl.textContent = visibleCount + '/' + totalCount + ' tasks shown (' + filteredCount + ' filtered)';
+        infoEl.textContent = visibleCount + '/' + totalCount + ' tasks shown (' + filteredCount + ' hidden by filters/collapse)';
     } else {
         infoEl.style.display = 'none';
     }

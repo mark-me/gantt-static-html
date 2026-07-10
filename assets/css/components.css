@@ -82,9 +82,27 @@
     border-radius: 20px;
     font-size: 0.85rem;
     font-weight: 500;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.2s ease;
+    user-select: none;
 }
 
-.legend-dot { width: 12px; height: 12px; border-radius: 50%; }
+.legend-badge:hover { border-color: currentColor; }
+
+.legend-badge.inactive {
+    opacity: 0.35;
+    filter: grayscale(60%);
+}
+
+.legend-hint {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-style: italic;
+    margin-left: 0.5rem;
+}
+
+.legend-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
 
 .status-badge {
     display: inline-block;
@@ -105,6 +123,28 @@
     padding: 1rem;
     color: var(--text-secondary);
     font-style: italic;
+}
+
+/* Gantt popup link (opens epic/feature in external tracker) */
+.popup-wrapper .popup-epic {
+    font-size: 0.8rem;
+    opacity: 0.85;
+    margin-top: 2px;
+}
+
+.popup-wrapper .popup-link {
+    margin-top: 6px;
+}
+
+.popup-wrapper .popup-link a {
+    color: #6dc0ff;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.popup-wrapper .popup-link a:hover {
+    text-decoration: underline;
 }
 
 /* Gantt Specific */

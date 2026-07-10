@@ -10,7 +10,21 @@
     min-height: 700px;
 }
 .task-hidden { display: none !important; }
-.epic-task { font-weight: bold; background-color: #f0f0f0; }
+
+/* Epic vs feature visual distinction. Per-epic hue is injected at runtime
+   (see injectEpicColorStyles) using classes like .epic-EPIC-1 so every
+   feature bar is visibly tied to its parent epic's color. */
+.gantt .bar-wrapper.epic-task .bar-label {
+    font-weight: 700;
+    font-size: 13px;
+}
+.gantt .bar-wrapper.epic-task .bar {
+    stroke: rgba(0, 0, 0, 0.25);
+    stroke-width: 1px;
+}
+.gantt .bar-wrapper.feature-task .bar-label {
+    font-size: 12px;
+}
 </style>
 {% endblock %}
 
@@ -48,7 +62,7 @@
 
 {% block content %}
 <div class="card legend">
-    <div class="legend-title">Epics</div>
+    <div class="legend-title">Epics <span class="legend-hint">(click a badge to show/hide that epic)</span></div>
     <div class="legend-items" id="legendContainer"></div>
 </div>
 
@@ -164,15 +178,37 @@ console.log('Task data loaded:', projectData.length, 'tasks');
                     end: task.end_date,
                     progress: Math.round((task.progress || 0) * 100),
                     dependencies: '',
-                    custom_class: task.is_epic ? 'epic-task' : 'feature-task'
+                    // custom_class carries both the epic/feature distinction AND
+                    // a per-epic grouping class (epic-<id>) so injectEpicColorStyles
+                    // can color every feature bar to match its parent epic.
+                    custom_class: (task.is_epic ? 'epic-task' : 'feature-task') + ' epic-' + (task.is_epic ? task.id : task.parent),
+                    url: task.url || null,
+                    epic_name: task.epic_name || null
                 };
             });
+
+            injectEpicColorStyles(projectData);
 
             console.log('Creating Gantt instance...');
             window.ganttChart = new Gantt('#gantt', frappeTasks, {
                 view_mode: 'Day',
                 on_click: function(task) {
                     console.log('Task clicked:', task);
+                },
+                custom_popup_html: function(task) {
+                    function escapeHtml(str) {
+                        if (str === null || str === undefined) return '';
+                        return String(str).replace(/[&<>"']/g, function(ch) {
+                            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
+                        });
+                    }
+                    var start = task.start ? new Date(task.start + 'T00:00:00').toLocaleDateString() : '';
+                    var end = task.end ? new Date(task.end + 'T00:00:00').toLocaleDateString() : '';
+                    var epicLine = task.epic_name ? '<div class="popup-epic">Epic: ' + escapeHtml(task.epic_name) + '</div>' : '';
+                    var linkLine = task.url ? '<div class="popup-link"><a href="' + escapeHtml(task.url) + '" target="_blank" rel="noopener noreferrer">🔗 Open in tracker</a></div>' : '';
+                    return '<div class="title">' + escapeHtml(task.name) + '</div>' +
+                        '<div class="subtitle">' + start + ' \u2013 ' + end + ' \u00b7 ' + task.progress + '%</div>' +
+                        epicLine + linkLine;
                 }
             });
 
@@ -195,13 +231,12 @@ console.log('Task data loaded:', projectData.length, 'tasks');
                 projectData.forEach(function(task) {
                     if (!task) return;
                     if (task.is_epic) {
-                        visibleIds[task.id] = true;
-                    } else {
-                        var parentCollapsed = window.collapsedEpics.has(task.parent);
-                        var passesFilter = typeof shouldShowTask === 'function' ? shouldShowTask(task) : true;
-                        if (!parentCollapsed && passesFilter) {
+                        var epicFilters = window.activeEpicFilters;
+                        if (!epicFilters || epicFilters.has(task.id)) {
                             visibleIds[task.id] = true;
                         }
+                    } else if (window.isFeatureVisible(task)) {
+                        visibleIds[task.id] = true;
                     }
                 });
 
@@ -249,6 +284,19 @@ console.log('Task data loaded:', projectData.length, 'tasks');
 // GLOBAL FUNCTIONS
 window.collapsedEpics = window.collapsedEpics || new Set();
 
+// Single source of truth for "should this feature task currently be shown",
+// combining status filters (filters.js), epic visibility filters (legend
+// toggles), and collapsed-epic state. Used by both renderGanttView (to
+// build the chart) and updateFilterInfo (to report accurate counts).
+window.isFeatureVisible = function(task) {
+    if (!task || task.is_epic) return true;
+    var epicFilters = window.activeEpicFilters;
+    var epicVisible = !epicFilters || epicFilters.has(task.parent);
+    var parentCollapsed = window.collapsedEpics && window.collapsedEpics.has(task.parent);
+    var passesStatusFilter = typeof shouldShowTask === 'function' ? shouldShowTask(task) : true;
+    return epicVisible && !parentCollapsed && passesStatusFilter;
+};
+
 window.expandAll = function() {
     window.collapsedEpics.clear();
     if (typeof window.renderGanttView === 'function') window.renderGanttView();
@@ -264,14 +312,16 @@ window.zoomIn = function() {
     if (window.ganttChart && window.ganttChart.change_view_mode) {
         var views = ['Quarter', 'Month', 'Week', 'Day'];
         var idx = views.indexOf(window.ganttChart.options.view_mode);
-        if (idx > 0) window.ganttChart.change_view_mode(views[idx - 1]);
+        // Zooming IN means seeing more detail, i.e. moving toward 'Day' (higher index)
+        if (idx > -1 && idx < views.length - 1) window.ganttChart.change_view_mode(views[idx + 1]);
     }
 };
 window.zoomOut = function() {
     if (window.ganttChart && window.ganttChart.change_view_mode) {
         var views = ['Quarter', 'Month', 'Week', 'Day'];
         var idx = views.indexOf(window.ganttChart.options.view_mode);
-        if (idx < views.length - 1) window.ganttChart.change_view_mode(views[idx + 1]);
+        // Zooming OUT means seeing a wider range, i.e. moving toward 'Quarter' (lower index)
+        if (idx > 0) window.ganttChart.change_view_mode(views[idx - 1]);
     }
 };
 // NOTE: filterByStatus/resetFilters are defined for real in filters.js
@@ -279,23 +329,99 @@ window.zoomOut = function() {
 // them here to stub console.log versions - that was the bug that made
 // the filter buttons appear to do nothing.
 
-// LEGEND BUILDER
+// EPIC FILTERING (legend badges double as toggle buttons)
+function toggleEpicFilter(epicId, badgeEl) {
+    if (!window.activeEpicFilters) return;
+    if (window.activeEpicFilters.has(epicId)) {
+        window.activeEpicFilters.delete(epicId);
+        badgeEl.classList.add('inactive');
+    } else {
+        window.activeEpicFilters.add(epicId);
+        badgeEl.classList.remove('inactive');
+    }
+    if (typeof window.renderGanttView === 'function') window.renderGanttView();
+    if (typeof updateFilterInfo === 'function') updateFilterInfo();
+}
+
+window.resetEpicFilters = function() {
+    var epicIds = (projectData || []).filter(function(t) { return t && t.is_epic; }).map(function(t) { return t.id; });
+    window.activeEpicFilters = new Set(epicIds);
+    document.querySelectorAll('.legend-badge').forEach(function(b) { b.classList.remove('inactive'); });
+};
+
+// LEGEND BUILDER - also wires each badge up as an epic show/hide toggle
 function buildLegend(tasks) {
     var container = document.getElementById('legendContainer');
     if (!container) return;
     container.innerHTML = '';
 
+    var epicIds = [];
     tasks.filter(function(task) { return task && task.is_epic; }).forEach(function(epic) {
+        epicIds.push(epic.id);
+
         var badge = document.createElement('span');
         badge.className = 'legend-badge';
+        badge.dataset.epicId = epic.id;
         badge.style.background = epic.color + '20';
+        badge.style.color = epic.color;
+        badge.title = 'Click to show/hide this epic';
+
         var dot = document.createElement('span');
         dot.className = 'legend-dot';
         dot.style.background = epic.color;
+
         badge.appendChild(dot);
         badge.appendChild(document.createTextNode(epic.text.replace(/^▶\s*/, '')));
+        badge.addEventListener('click', function() {
+            toggleEpicFilter(epic.id, badge);
+        });
+
         container.appendChild(badge);
     });
+
+    // All epics visible by default
+    window.activeEpicFilters = new Set(epicIds);
+}
+
+// Colors every feature bar to match its parent epic (tinted fill + colored
+// outline), and darkens the epic bar's own progress fill slightly, so it's
+// visually obvious which features belong to which epic.
+function injectEpicColorStyles(tasks) {
+    function hexToRgba(hex, alpha) {
+        if (!hex) return 'rgba(109,74,255,' + alpha + ')';
+        var clean = hex.replace('#', '');
+        var f = parseInt(clean, 16);
+        var r = (f >> 16) & 255, g = (f >> 8) & 255, b = f & 255;
+        return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+    }
+    function shade(hex, percent) {
+        if (!hex) return hex;
+        var f = parseInt(hex.replace('#', ''), 16);
+        var t = percent < 0 ? 0 : 255;
+        var p = Math.abs(percent) / 100;
+        var R = (f >> 16), G = (f >> 8) & 0x00FF, B = f & 0x0000FF;
+        return '#' + (0x1000000 +
+            (Math.round((t - R) * p) + R) * 0x10000 +
+            (Math.round((t - G) * p) + G) * 0x100 +
+            (Math.round((t - B) * p) + B)).toString(16).slice(1);
+    }
+
+    var rules = [];
+    (tasks || []).filter(function(t) { return t && t.is_epic && t.color; }).forEach(function(epic) {
+        var cls = 'epic-' + epic.id;
+        rules.push('.gantt .bar-wrapper.' + cls + '.epic-task .bar { fill: ' + epic.color + '; }');
+        rules.push('.gantt .bar-wrapper.' + cls + '.epic-task .bar-progress { fill: ' + shade(epic.color, -25) + '; }');
+        rules.push('.gantt .bar-wrapper.' + cls + '.feature-task .bar { fill: ' + hexToRgba(epic.color, 0.18) + '; stroke: ' + epic.color + '; stroke-width: 1.5; }');
+        rules.push('.gantt .bar-wrapper.' + cls + '.feature-task .bar-progress { fill: ' + epic.color + '; }');
+    });
+
+    var styleEl = document.getElementById('epic-color-styles');
+    if (!styleEl) {
+        styleEl = document.createElement('style');
+        styleEl.id = 'epic-color-styles';
+        document.head.appendChild(styleEl);
+    }
+    styleEl.textContent = rules.join('\n');
 }
 </script>
 {% endblock %}

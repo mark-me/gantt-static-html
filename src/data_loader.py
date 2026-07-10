@@ -81,6 +81,7 @@ def _normalize_data(raw_data: dict[str, Any]) -> dict[str, Any]:
             "name": epic.get("name", "Untitled Epic"),
             "color": epic.get("color"),
             "description": epic.get("description", ""),
+            "url": epic.get("url"),
             "features": [],
         }
 
@@ -96,6 +97,7 @@ def _normalize_data(raw_data: dict[str, Any]) -> dict[str, Any]:
                 "progress": feature.get("progress", 0),
                 "status": feature.get("status", "pending"),
                 "description": feature.get("description", ""),
+                "url": feature.get("url"),
             }
 
             if normalized_feature["start_date"] and normalized_feature["end_date"]:
